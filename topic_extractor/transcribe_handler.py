@@ -1,5 +1,5 @@
 import requests
-from .custom_waiter import CustomWaiter, WaitState
+from custom_waiter import CustomWaiter, WaitState
 
 
 
