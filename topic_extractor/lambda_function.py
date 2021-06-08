@@ -21,21 +21,31 @@ def lambda_handler(event, context):
         print(f'Topic: {topic}')
 
         username = body['username']
-        topic_id = uuid.uuid4().hex
-        response = ddb.put_item(
-            TableName=os.environ['TABLE_NAME'],
-            Item={
-                'topic_id': {'S': topic_id},
-                'username': {'S': username},
-                'date': {'S': body['date']},
-                'time': {'S': body['time']},
-                'topic': {'S': topic}
-            }
-        )
+
+        response = write_to_ddb(username, topic, body)
         print(response)
 
-        line_bot_api.push_message(
-            os.environ['GROUP_ID'],
-            TextSendMessage(text=f'@{username} 剛剛發佈了新問題，快來看看吧！\n{topic}')
-        )
+        publish_to_line_group(username, topic)
+
+    return
+
+def write_to_ddb(username, topic, body):
+    topic_id = uuid.uuid4().hex
+    response = ddb.put_item(
+        TableName=os.environ['TABLE_NAME'],
+        Item={
+            'topic_id': {'S': topic_id},
+            'username': {'S': username},
+            'date': {'S': body['date']},
+            'time': {'S': body['time']},
+            'topic': {'S': topic}
+        }
+    )
+    return response
+
+def publish_to_line_group(username, topic):
+    line_bot_api.push_message(
+        os.environ['GROUP_ID'],
+        TextSendMessage(text=f'@{username} 剛剛發佈了新問題，快來看看吧！\n{topic}')
+    )
     return
