@@ -1,49 +1,41 @@
 from boto3 import client
-from datetime import datetime
-import pytz
-import os
 import uuid
-from transcribe_handler import TranscribeHandler
+import os
+import json
+from linebot import LineBotApi
+from linebot.models import TextSendMessage
 from extractor import Extractor
 
 
 
-transcribe = client('transcribe', region_name='us-east-1')
-transcribe_handler = TranscribeHandler(transcribe)
 extractor = Extractor()
 ddb = client('dynamodb', region_name='us-east-1')
+line_bot_api = LineBotApi(os.environ['LINE_ACCESS_TOKEN'])
+
 
 def lambda_handler(event, context):
     for record in event['Records']:
-        s3_event = record['s3']
-        print(s3_event)
+        body = json.loads(record['body'])
 
-        bucket_name = s3_event['bucket']['name']
-        key = s3_event['object']['key'].replace('%40', '@')
-        texts = transcribe_handler.record_to_texts(bucket_name, key)
-        topic = extractor.extract_topic(texts)
+        topic = extractor.extract_topic(body['texts'])
         print(f'Topic: {topic}')
 
+        username = body['username']
         topic_id = uuid.uuid4().hex
-        event_datetime = convert_event_timezone(record['eventTime'])
-        event_date, event_time = event_datetime.split(' ')
         response = ddb.put_item(
             TableName=os.environ['TABLE_NAME'],
             Item={
                 'topic_id': {'S': topic_id},
-                'date': {'S': event_date},
-                'time': {'S': event_time},
+                'username': {'S': username},
+                'date': {'S': body['date']},
+                'time': {'S': body['time']},
                 'topic': {'S': topic}
             }
         )
+        print(response)
 
+        line_bot_api.push_message(
+            os.environ['GROUP_ID'],
+            TextSendMessage(text=f'@{username} 剛剛發佈了新問題，快來看看吧！\n{topic}')
+        )
     return
-
-def convert_event_timezone(dt_str):
-    orig_dt = datetime.strptime(
-        dt_str[:-5],
-        '%Y-%m-%dT%H:%M:%S'
-    ).replace(tzinfo=pytz.UTC)
-    taipei_dt = orig_dt.astimezone(pytz.timezone('Asia/Taipei'))
-    taipei_dt_str = taipei_dt.strftime('%Y-%m-%d %H:%M:%S')
-    return taipei_dt_str
