@@ -2,7 +2,8 @@ from boto3 import client
 from datetime import datetime
 import pytz
 import os
-
+from linebot import LineBotApi
+from linebot.models import TextSendMessage
 
 
 
@@ -10,6 +11,7 @@ UPPER_BOUND = 1
 
 rekog = client('rekognition', region_name='us-east-1')
 ddb = client('dynamodb', region_name='us-east-1')
+line_bot_api = LineBotApi(os.environ['LINE_ACCESS_TOKEN'])
 
 def lambda_handler(event, context):
     """
@@ -30,6 +32,9 @@ def lambda_handler(event, context):
         response = write_to_ddb(username, event_date, event_time, has_face)
 
         warning = update_user_absense_status(username, has_face)
+        if warning:
+            publish_canned_message(username)
+            signal_iot()
     return
 
 def check_s3_event_has_face(s3_event):
@@ -102,3 +107,13 @@ def update_absense_item(username, absense_cnt):
         }
     )
     return response
+
+def publish_canned_message(username):
+    line_bot_api.push_message(
+        os.environ['GROUP_ID'],
+        TextSendMessage(text=f'@{username} 已經連續分心{UPPER_BOUND + 1}次了，還敢混啊！')
+    )
+    pass
+
+def signal_iot():
+    pass
