@@ -5,6 +5,9 @@ import os
 
 
 
+
+UPPER_BOUND = 1
+
 rekog = client('rekognition', region_name='us-east-1')
 ddb = client('dynamodb', region_name='us-east-1')
 
@@ -25,6 +28,8 @@ def lambda_handler(event, context):
         print(f'{username} - {event_date} {event_time} - focus: {has_face}')
 
         response = write_to_ddb(username, event_date, event_time, has_face)
+
+        warning = update_user_absense_status(username, has_face)
     return
 
 def check_s3_event_has_face(s3_event):
@@ -59,6 +64,41 @@ def write_to_ddb(username, event_date, event_time, has_face):
             'date': {'S': event_date},
             'time': {'S': event_time},
             'focus': {'N': str(int(has_face))}
+        }
+    )
+    return response
+
+def update_user_absense_status(username, has_face):
+    item = get_absense_item(username)
+    if item is None:
+        response = update_absense_item(username, 0)
+        return False
+    absense_cnt = int(item['absense_count']['N'])
+    if absense_cnt >= UPPER_BOUND:
+        response = update_absense_item(username, 0)
+        return True
+    else:
+        response = update_absense_item(username, absense_cnt + 1)
+        return False
+
+def get_absense_item(username):
+    response = ddb.get_item(
+        TableName=os.environ['ABSENSE_TABLE'],
+        Key={
+            'username': {
+                'S': username
+            }
+        }
+    )
+    item = response.get('Item', None)
+    return item
+
+def update_absense_item(username, absense_cnt):
+    response = ddb.put_item(
+        TableName=os.environ['ABSENSE_TABLE'],
+        Item={
+            'username': {'S': username},
+            'absense_count': {'N': str(absense_cnt)}
         }
     )
     return response
