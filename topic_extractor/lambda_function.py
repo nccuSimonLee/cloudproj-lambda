@@ -5,6 +5,7 @@ import json
 from linebot import LineBotApi
 from linebot.models import TextSendMessage
 from extractor import Extractor
+import requests
 
 
 
@@ -26,6 +27,11 @@ def lambda_handler(event, context):
         print(response)
 
         publish_to_line_group(topic_data)
+
+        response = publish_to_frontend(topic_data)
+        print('frontend response:', response)
+        if response.status_code == 200:
+            print('frontend response content:', response.text)
 
     return
 
@@ -61,3 +67,15 @@ def publish_to_line_group(topic_data):
         TextSendMessage(text=f'@{username} 剛剛發佈了新問題，快來看看吧！\n{topic}')
     )
     return
+
+def publish_to_frontend(topic_data):
+    url = 'https://wiq2ve4q31.execute-api.us-east-1.amazonaws.com/devx/post'
+    response = requests.post(
+        url,
+        json={
+            'id': topic_data['topic_id'],
+            'title': topic_data['topic'],
+            'timestamp': f'{topic_data["date"]} {topic_data["time"]}'
+        }
+    )
+    return response
