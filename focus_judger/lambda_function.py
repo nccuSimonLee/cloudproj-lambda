@@ -4,6 +4,7 @@ import pytz
 import os
 from linebot import LineBotApi
 from linebot.models import TextSendMessage
+import json
 
 
 
@@ -16,30 +17,34 @@ line_bot_api = LineBotApi(os.environ['LINE_ACCESS_TOKEN'])
 def lambda_handler(event, context):
     """
     Args:
-        event: an S3 put object event
+        event: an API gateway event
     """
-    for record in event['Records']:
-        print(record['s3'])
-        # determine if there are any faces in the photo
-        has_face = check_s3_event_has_face(record['s3'])
-        
-        # create the attributes of the table item
-        username = record['s3']['object']['key'].split('/')[0].replace('%40', '@')
-        event_datetime = convert_event_timezone(record['eventTime'])
-        event_date, event_time = event_datetime.split(' ')
-        print(f'{username} - {event_date} {event_time} - focus: {has_face}')
+    print('event:', event)
+    params = json.loads(event['body'])
 
-        response = write_to_ddb(username, event_date, event_time, has_face)
+    # determine if there are any faces in the photo
+    has_face = check_s3_object_has_face(
+        params['photo']['bucket_name'],
+        params['photo']['key']
+    )
+    
+    # create the attributes of the table item
+    username = params['username'].replace('%40', '@')
+    event_date, event_time = convert_event_timezone(
+        event['requestContext']['time']
+    ).split(' ')
+    print(f'{username} - {event_date} {event_time} - focus: {has_face}')
 
-        warning = update_user_absense_status(username, has_face)
-        if warning:
-            publish_canned_message(username)
-            signal_iot()
+    response = write_to_ddb(username, event_date, event_time, has_face)
+
+    warning = update_user_absense_status(username, has_face)
+    if warning:
+        publish_canned_message(username)
+        signal_iot()
     return
 
-def check_s3_event_has_face(s3_event):
-    bucket_name = s3_event['bucket']['name']
-    key = s3_event['object']['key'].replace('%40', '@')
+def check_s3_object_has_face(bucket_name, key):
+    key = key.replace('%40', '@')
     response = rekog.detect_faces(
         Image={
             'S3Object': {
@@ -54,8 +59,8 @@ def check_s3_event_has_face(s3_event):
 
 def convert_event_timezone(dt_str):
     orig_dt = datetime.strptime(
-        dt_str[:-5],
-        '%Y-%m-%dT%H:%M:%S'
+        dt_str.split(' ')[0],
+        '%d/%b/%Y:%H:%M:%S'
     ).replace(tzinfo=pytz.UTC)
     taipei_dt = orig_dt.astimezone(pytz.timezone('Asia/Taipei'))
     taipei_dt_str = taipei_dt.strftime('%Y-%m-%d %H:%M:%S')
