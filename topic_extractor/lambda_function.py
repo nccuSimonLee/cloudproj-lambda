@@ -11,6 +11,7 @@ import requests
 
 extractor = Extractor()
 ddb = client('dynamodb', region_name='us-east-1')
+sns = client('sns', region_name='us-east-1')
 line_bot_api = LineBotApi(os.environ['LINE_ACCESS_TOKEN'])
 
 
@@ -25,6 +26,12 @@ def lambda_handler(event, context):
 
         response = write_to_ddb(topic_data)
         print(response)
+
+        sns.publish(
+            TopicArn=os.environ['SNS_TOPIC_ARN'],
+            Subject='問題討論群有新問題啦，快來看看！',
+            Message=f'{body["username"]}:\n{topic}'
+        )
 
         publish_to_line_group(topic_data)
 
