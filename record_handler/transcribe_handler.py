@@ -1,4 +1,5 @@
 import requests
+import uuid
 from custom_waiter import CustomWaiter, WaitState
 
 
@@ -31,7 +32,7 @@ class TranscribeHandler:
         return texts
 
     def _start_transcription_job(self, bucket_name, key):
-        job_name = 'job_name'
+        job_name = uuid.uuid4().hex
         job_uri = f's3://{bucket_name}/{key}'
         response = self.transcribe.start_transcription_job(
             TranscriptionJobName=job_name,
