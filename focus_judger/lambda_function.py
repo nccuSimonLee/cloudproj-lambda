@@ -6,6 +6,9 @@ from linebot import LineBotApi
 from linebot.models import TextSendMessage
 import json
 import requests
+import uuid
+from numpy.random import normal
+from numpy import clip
 
 
 
@@ -42,15 +45,24 @@ def lambda_handler(event, context):
         params['screenshot']['bucket_name'],
         params['screenshot']['key']
     )
-
     print(f'{username} - {event_date} {event_time} - screenshot status: {screenshot_status}')
-
-    publish_to_frontend(username, has_face, screenshot_status)
 
     warning = update_user_absense_status(username, has_face, screenshot_status)
     if warning:
         publish_canned_message(username)
         signal_iot()
+
+    response = publish_to_frontend(
+        username,
+        has_face,
+        screenshot_status,
+        warning,
+        event_date,
+        event_time
+    )
+    print('frontend response:', response)
+    if response.status_code == 200:
+        print('frontend response content:', response.text)
     return
 
 def check_s3_object_has_face(bucket_name, key):
@@ -100,8 +112,35 @@ def classify_screenshot(bucket_name, key):
     lazy = int(res.json()['screenshot_status'][0]['Name'])
     return lazy
 
-def publish_to_frontend(username, has_face, screenshot_status):
-    pass
+def publish_to_frontend(username, has_face, screenshot_status, warning, date, time):
+    userinfo_id = uuid.uuid4().hex
+    is_focus = has_face and (screenshot_status == 0)
+    focus_score = compute_focus_score(is_focus)
+    params = {
+        'id': userinfo_id,
+        'name': username,
+        'user_status_info': has_face,
+        'focus_score': focus_score,
+        'focusing': not warning,
+        'screening_status': 'working' if screenshot_status == 0 else 'lazy',
+        'timestamp': f'{date} {time}'
+    }
+    response = requests.post(
+        'https://wiq2ve4q31.execute-api.us-east-1.amazonaws.com/devx/user',
+        json=params
+    )
+    return response
+
+def compute_focus_score(is_focus):
+    mean = 0.75 if is_focus else 0.25
+    lower = 0.5 if is_focus else 0
+    higher = 1 if is_focus else 0.5
+    score = clip(
+        normal(mean, 0.1, 1)[0],
+        lower,
+        higher
+    )
+    return score
 
 def update_user_absense_status(username, has_face, screenshot_status):
     if has_face and screenshot_status == 0:
