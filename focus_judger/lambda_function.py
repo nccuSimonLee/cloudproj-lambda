@@ -5,6 +5,7 @@ import os
 from linebot import LineBotApi
 from linebot.models import TextSendMessage
 import json
+import requests
 
 
 
@@ -33,11 +34,20 @@ def lambda_handler(event, context):
     event_date, event_time = convert_event_timezone(
         event['requestContext']['time']
     ).split(' ')
-    print(f'{username} - {event_date} {event_time} - focus: {has_face}')
+    print(f'{username} - {event_date} {event_time} - has face: {has_face}')
 
     response = write_to_ddb(username, event_date, event_time, has_face)
 
-    warning = update_user_absense_status(username, has_face)
+    screenshot_status = classify_screenshot(
+        params['screenshot']['bucket_name'],
+        params['screenshot']['key']
+    )
+
+    print(f'{username} - {event_date} {event_time} - screenshot status: {screenshot_status}')
+
+    publish_to_frontend(username, has_face, screenshot_status)
+
+    warning = update_user_absense_status(username, has_face, screenshot_status)
     if warning:
         publish_canned_message(username)
         signal_iot()
@@ -78,7 +88,24 @@ def write_to_ddb(username, event_date, event_time, has_face):
     )
     return response
 
-def update_user_absense_status(username, has_face):
+def classify_screenshot(bucket_name, key):
+    url = 'https://eu1ggjqgsf.execute-api.us-east-1.amazonaws.com/default/hw4_lambda'
+    res = requests.post(
+        url,
+        json={
+            'bucket_name': bucket_name,
+            'key': key
+        }
+    )
+    lazy = int(res.json()['screenshot_status'][0]['Name'])
+    return lazy
+
+def publish_to_frontend(username, has_face, screenshot_status):
+    pass
+
+def update_user_absense_status(username, has_face, screenshot_status):
+    if has_face and screenshot_status == 0:
+        return False
     item = get_absense_item(username)
     if item is None:
         response = update_absense_item(username, 0)
