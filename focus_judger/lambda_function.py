@@ -119,9 +119,9 @@ def publish_to_frontend(username, has_face, screenshot_status, warning, date, ti
     params = {
         'id': userinfo_id,
         'name': username,
-        'user_status_info': has_face,
-        'focus_score': focus_score,
-        'focusing': not warning,
+        'user_status_info': str(int(has_face)),
+        'focus_score': str(round(focus_score, 2)),
+        'focusing': str(int(not warning)),
         'screening_status': 'working' if screenshot_status == 0 else 'lazy',
         'timestamp': f'{date} {time}'
     }
