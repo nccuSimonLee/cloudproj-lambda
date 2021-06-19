@@ -50,7 +50,8 @@ def lambda_handler(event, context):
     warning = update_user_absense_status(username, has_face, screenshot_status)
     if warning:
         publish_canned_message(username)
-        signal_iot()
+        response = signal_iot()
+        print('MQTT response:', response)
 
     response = publish_to_frontend(
         username,
@@ -187,4 +188,5 @@ def publish_canned_message(username):
     pass
 
 def signal_iot():
-    pass
+    res = requests.get('https://e6tqyl5qoa.execute-api.us-east-1.amazonaws.com/default/calliot')
+    return res
