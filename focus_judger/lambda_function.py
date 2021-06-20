@@ -188,5 +188,5 @@ def publish_canned_message(username):
     pass
 
 def signal_iot():
-    res = requests.get('https://e6tqyl5qoa.execute-api.us-east-1.amazonaws.com/default/calliot')
+    res = requests.get('https://4rvc6h64d7.execute-api.us-east-1.amazonaws.com/default/mqttfunc')
     return res
