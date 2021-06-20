@@ -102,7 +102,7 @@ def write_to_ddb(username, event_date, event_time, has_face):
     return response
 
 def classify_screenshot(bucket_name, key):
-    url = 'https://eu1ggjqgsf.execute-api.us-east-1.amazonaws.com/default/hw4_lambda'
+    url = 'https://k7sa8xr0sd.execute-api.us-east-1.amazonaws.com/default/myfinalfunc'
     res = requests.post(
         url,
         json={
