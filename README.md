@@ -79,5 +79,35 @@ Once record_handler receives the event, it would use [aws transcribe](https://aw
 | [python-opencc](https://github.com/yichen0831/opencc-python) | create by yourself |
 
 # topic_extractor
+topic_extractor is triggered by an SQS event, the message must have a json body:
+```json
+{
+    'username': string,
+    'date': string,
+    'time': string,
+    'texts': sring
+}
+```
+Once topic_extractor receives the SQS event, it would extract the segment describing the discussion topic from the texts provided by the SQS message body.
+
+Then the segment, or named topic, would be published to the database of the frontend and the SNS topic to notify all the members via email.
+
+## Setup
+### Runtime
+ - Python 3.8
+
+### Permissions
+ - cloudwatch
+ - dynamoDB
+ - sns
+
+### Trigger
+ - SQS
+
+### Layers
+| name | Version ARN |
+|-------|-------------|
+| Klayers-python38-requests|arn:aws:lambda:us-east-1:770693421928:layer:Klayers-python38-requests:17|
+| [linebot-sdk](https://github.com/line/line-bot-sdk-python) | create by yourself |
 
 # reply_catcher
