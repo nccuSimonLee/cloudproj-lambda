@@ -111,3 +111,22 @@ Then the segment, or named topic, would be published to the database of the fron
 | [linebot-sdk](https://github.com/line/line-bot-sdk-python) | create by yourself |
 
 # reply_catcher
+reply_catcher is triggered by an API gateway. Whenever the LINE groups in which the LINE bot participated receive replies, LINE would call the API to pass the replies.
+
+Once reply_catcher receives a reply, it would keep the reply if it comes from the discussion group. Then the reply with other informations would be published to the SQS queue to ask the [worker](https://github.com/nccuSimonLee/cloudproj-worker) perform the matching process.
+
+## Setup
+### Runtime
+ - Python 3.8
+
+### Permissions
+ - cloudwatch
+ - sqs
+
+### Trigger
+ - API Gateway
+
+### Layers
+| name | Version ARN |
+|-------|-------------|
+|Klayers-python38-pytz | arn:aws:lambda:us-east-1:770693421928:layer:Klayers-python38-pytz:5 |
