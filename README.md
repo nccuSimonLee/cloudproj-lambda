@@ -25,7 +25,7 @@ focus_judger is triggered by an API gateway, and the POST request sent to the AP
     }
 }
 ```
-Once focus_judger receives the request, it would use aws rekognition to judge the user's status is working or lazy. Then it would publish the status data to the database of the frontend.
+Once focus_judger receives the request, it would use [aws rekognition](https://aws.amazon.com/tw/transcribe/) to judge the user's status is working or lazy. Then it would publish the status data to the database of the frontend.
 
 If the condition is staisfied, focus_judger would publish a canned message the line group and publish a message to the MQTT to trigger the IoT device.
 
@@ -47,9 +47,36 @@ If the condition is staisfied, focus_judger would publish a canned message the l
 | Klayers-python38-requests|arn:aws:lambda:us-east-1:770693421928:layer:Klayers-python38-requests:17
 |Klayers-python38-numpy | arn:aws:lambda:us-east-1:770693421928:layer:Klayers-python38-numpy:17
 |Klayers-python38-pytz | arn:aws:lambda:us-east-1:770693421928:layer:Klayers-python38-pytz:5 |
-| linebot-sdk | create by yourself |
+| [linebot-sdk](https://github.com/line/line-bot-sdk-python) | create by yourself |
 
 # record_handler
+record_handler is triggered by an S3 object create event, and the object must be a wav file.
+
+Once record_handler receives the event, it would use [aws transcribe](https://aws.amazon.com/tw/transcribe/) to transcribe the wav file into texts, and generate some relevant data:
+ - username
+ - date: the date of the event creation in the Asia/Taipei time zone (e.g., 2021-06-23)
+ - time: the time (24-hour clock) of the event creation in the Asia/Taipei time zone (e.g., 08:30:00)
+ - texts: transcription of the wav file
+
+ The relevant data would be published to the SQS queue to trigger topic_extractor.
+
+## Setup
+### Runtime
+ - Python 3.8
+
+### Permissions
+ - cloudwatch
+ - transcribe
+ - sqs
+
+### Trigger
+ - S3 object create event
+
+### Layers
+| name | Version ARN |
+|-------|-------------|
+|Klayers-python38-pytz | arn:aws:lambda:us-east-1:770693421928:layer:Klayers-python38-pytz:5 |
+| [python-opencc](https://github.com/yichen0831/opencc-python) | create by yourself |
 
 # topic_extractor
 
